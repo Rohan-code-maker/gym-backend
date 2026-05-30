@@ -1,0 +1,219 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Role {
+  SUPER_ADMIN
+  GYM_OWNER
+  STAFF
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+  FROZEN
+}
+
+enum PaymentMethod {
+  CASH
+  UPI
+  CARD
+  BANK_TRANSFER
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum NotificationType {
+  EXPIRY_REMINDER
+  PAYMENT_DUE
+  RENEWAL
+  GENERAL
+}
+
+// ─── Models ──────────────────────────────────────────────────────────────────
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  password      String
+  name          String
+  phone         String?
+  avatar        String?
+  role          Role           @default(GYM_OWNER)
+  fcmToken      String?
+  isActive      Boolean        @default(true)
+  refreshTokens RefreshToken[]
+  gyms          Gym[]
+  notifications Notification[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([email])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  family    String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isRevoked Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([token])
+  @@index([family])
+  @@map("refresh_tokens")
+}
+
+model Gym {
+  id            String         @id @default(uuid())
+  name          String
+  address       String?
+  phone         String?
+  logo          String?
+  ownerId       String
+  owner         User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  members       Member[]
+  plans         Plan[]
+  isActive      Boolean        @default(true)
+  validUntil    DateTime?
+  planType      String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([ownerId])
+  @@map("gyms")
+}
+
+model Member {
+  id               String         @id @default(uuid())
+  name             String
+  email            String?
+  phone            String
+  address          String?
+  avatar           String?
+  gender           Gender?
+  emergencyContact String?
+  notes            String?
+  isActive         Boolean        @default(true)
+  gymId            String
+  gym              Gym            @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  subscriptions    Subscription[]
+  payments         Payment[]
+  joinedAt         DateTime       @default(now())
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([gymId])
+  @@index([phone])
+  @@map("members")
+}
+
+model Plan {
+  id            String         @id @default(uuid())
+  name          String
+  description   String?
+  durationDays  Int
+  price         Decimal        @db.Decimal(10, 2)
+  features      String[]
+  isActive      Boolean        @default(true)
+  gymId         String
+  gym           Gym            @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  subscriptions Subscription[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([gymId])
+  @@map("plans")
+}
+
+model Subscription {
+  id        String             @id @default(uuid())
+  startDate DateTime
+  endDate   DateTime
+  status    SubscriptionStatus @default(ACTIVE)
+  memberId  String
+  member    Member             @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  planId    String
+  plan      Plan               @relation(fields: [planId], references: [id])
+  payments  Payment[]
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  @@index([memberId])
+  @@index([planId])
+  @@index([status])
+  @@index([endDate])
+  @@map("subscriptions")
+}
+
+model Payment {
+  id             String         @id @default(uuid())
+  amount         Decimal        @db.Decimal(10, 2)
+  method         PaymentMethod  @default(CASH)
+  status         PaymentStatus  @default(COMPLETED)
+  notes          String?
+  memberId       String
+  member         Member         @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  subscriptionId String?
+  subscription   Subscription?  @relation(fields: [subscriptionId], references: [id])
+  paidAt         DateTime       @default(now())
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([memberId])
+  @@index([subscriptionId])
+  @@map("payments")
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  title     String
+  body      String
+  type      NotificationType @default(GENERAL)
+  data      Json?
+  isRead    Boolean          @default(false)
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime         @default(now())
+
+  @@index([userId])
+  @@index([isRead])
+  @@map("notifications")
+}
+
+model SystemPlan {
+  id           String   @id @default(uuid())
+  name         String
+  durationDays Int
+  price        Decimal? @db.Decimal(10, 2)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("system_plans")
+}
