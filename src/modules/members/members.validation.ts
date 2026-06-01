@@ -9,6 +9,7 @@ export const createMemberSchema = z.object({
     gender: z.enum(['MALE', 'FEMALE', 'OTHER']).optional(),
     emergencyContact: z.string().max(15).optional(),
     notes: z.string().max(500).optional(),
+    avatar: z.string().url().optional().or(z.literal('')),
   }),
 });
 
@@ -22,7 +23,8 @@ export const updateMemberSchema = z.object({
     gender: z.enum(['MALE', 'FEMALE', 'OTHER']).optional(),
     emergencyContact: z.string().max(15).optional(),
     notes: z.string().max(500).optional(),
-    isActive: z.boolean().optional(),
+    isActive: z.coerce.boolean().optional(),
+    avatar: z.string().url().optional().or(z.literal('')),
   }),
 });
 

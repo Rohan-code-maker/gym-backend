@@ -2,6 +2,23 @@ import prisma from '../../config/database';
 import { AppError } from '../../shared/utils/AppError';
 import { PaginationQuery } from '../../shared/utils/pagination';
 import { CreateMemberInput, UpdateMemberInput } from './members.validation';
+import { cloudinary } from '../../config/cloudinary';
+
+const extractPublicId = (url: string) => {
+  try {
+    const splitUrl = url.split('/upload/');
+    if (splitUrl.length < 2) return null;
+    const pathParts = splitUrl[1].split('/');
+    if (pathParts[0].match(/^v\d+$/)) {
+      pathParts.shift();
+    }
+    const fullPath = pathParts.join('/');
+    const lastDotIndex = fullPath.lastIndexOf('.');
+    return lastDotIndex !== -1 ? fullPath.substring(0, lastDotIndex) : fullPath;
+  } catch (e) {
+    return null;
+  }
+};
 
 const memberInclude = {
   subscriptions: {
@@ -100,6 +117,13 @@ export class MembersService {
       }
     }
 
+    if (data.avatar && member.avatar && data.avatar !== member.avatar) {
+      const publicId = extractPublicId(member.avatar);
+      if (publicId) {
+        cloudinary.uploader.destroy(publicId).catch(err => console.error('Cloudinary delete error:', err));
+      }
+    }
+
     return prisma.member.update({
       where: { id },
       data: {
@@ -114,12 +138,31 @@ export class MembersService {
     await this.verifyGymOwner(gymId, ownerId);
     const member = await prisma.member.findFirst({ where: { id, gymId } });
     if (!member) throw new AppError('Member not found', 404);
+
+    if (member.avatar) {
+      const publicId = extractPublicId(member.avatar);
+      if (publicId) {
+        cloudinary.uploader.destroy(publicId).catch(err => console.error('Cloudinary delete error:', err));
+      }
+    }
+
     await prisma.member.delete({ where: { id } });
   }
 
   /** Bulk hard-delete members */
   async deleteMembers(gymId: string, ids: string[], ownerId: string) {
     await this.verifyGymOwner(gymId, ownerId);
+
+    const members = await prisma.member.findMany({ where: { gymId, id: { in: ids } } });
+    for (const member of members) {
+      if (member.avatar) {
+        const publicId = extractPublicId(member.avatar);
+        if (publicId) {
+          cloudinary.uploader.destroy(publicId).catch(err => console.error('Cloudinary delete error:', err));
+        }
+      }
+    }
+
     await prisma.member.deleteMany({
       where: {
         gymId,
