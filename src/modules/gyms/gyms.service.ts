@@ -11,20 +11,23 @@ export class GymsService {
         orderBy: { createdAt: 'desc' },
       });
     }
-    return prisma.gym.findMany({
-      where: { ownerId, isActive: true },
+    const gyms = await prisma.gym.findMany({
+      where: { ownerId },
       include: { _count: { select: { members: true, plans: true } } },
       orderBy: { createdAt: 'desc' },
     });
+    if (gyms.some(g => !g.isActive)) throw new AppError('GYM_DEACTIVATED', 403);
+    return gyms;
   }
 
   /** Get single gym by ID (verifying ownership) */
   async getGymById(id: string, ownerId: string) {
     const gym = await prisma.gym.findFirst({
-      where: { id, ownerId, isActive: true },
+      where: { id, ownerId },
       include: { _count: { select: { members: true, plans: true } } },
     });
     if (!gym) throw new AppError('Gym not found', 404);
+    if (!gym.isActive) throw new AppError('GYM_DEACTIVATED', 403);
     return gym;
   }
 
@@ -40,6 +43,7 @@ export class GymsService {
   async updateGym(id: string, data: UpdateGymInput, ownerId: string) {
     const gym = await prisma.gym.findFirst({ where: { id, ownerId } });
     if (!gym) throw new AppError('Gym not found', 404);
+    if (!gym.isActive) throw new AppError('GYM_DEACTIVATED', 403);
     return prisma.gym.update({
       where: { id },
       data,
@@ -77,6 +81,7 @@ export class GymsService {
   async getDashboardStats(gymId: string, ownerId: string) {
     const gym = await prisma.gym.findFirst({ where: { id: gymId, ownerId } });
     if (!gym) throw new AppError('Gym not found', 404);
+    if (!gym.isActive) throw new AppError('GYM_DEACTIVATED', 403);
 
     const now = new Date();
     const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);

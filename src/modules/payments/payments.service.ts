@@ -4,8 +4,9 @@ import { PaginationQuery } from '../../shared/utils/pagination';
 
 export class PaymentsService {
   private async verifyGymOwner(gymId: string, ownerId: string) {
-    const gym = await prisma.gym.findFirst({ where: { id: gymId, ownerId, isActive: true } });
+    const gym = await prisma.gym.findFirst({ where: { id: gymId, ownerId } });
     if (!gym) throw new AppError('Gym not found', 404);
+    if (!gym.isActive) throw new AppError('GYM_DEACTIVATED', 403);
     return gym;
   }
 

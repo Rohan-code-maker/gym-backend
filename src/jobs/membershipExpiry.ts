@@ -11,7 +11,7 @@ const notificationsService = new NotificationsService();
  */
 export const startMembershipExpiryJob = () => {
   cron.schedule(
-    '0 10 * * *',
+    '0 5 * * *',
     async () => {
       const now = new Date();
 
