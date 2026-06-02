@@ -11,16 +11,41 @@ const notificationsService = new NotificationsService();
  */
 export const startMembershipExpiryJob = () => {
   cron.schedule(
-    '0 5 * * *',
+    '0 10 * * *',
     async () => {
       const now = new Date();
 
       try {
-        // 1. Mark past-due subscriptions as EXPIRED
-        const expired = await prisma.subscription.updateMany({
+        // 1. Mark past-due subscriptions as EXPIRED and notify owner
+        const expiredSubscriptions = await prisma.subscription.findMany({
           where: { status: 'ACTIVE', endDate: { lt: now } },
-          data: { status: 'EXPIRED' },
+          include: {
+            member: { include: { gym: { include: { owner: { select: { id: true, fcmToken: true } } } } } },
+            plan: { select: { name: true } },
+          },
         });
+
+        if (expiredSubscriptions.length > 0) {
+          await prisma.subscription.updateMany({
+            where: { id: { in: expiredSubscriptions.map(s => s.id) } },
+            data: { status: 'EXPIRED' },
+          });
+
+          for (const sub of expiredSubscriptions) {
+            const ownerId = sub.member.gym.owner.id;
+            const title = '🚨 Membership Expired';
+            const body = `${sub.member.name}'s ${sub.plan.name} plan has expired.`;
+
+            // Create in-app notification
+            await notificationsService.createInAppNotification(ownerId, title, body, 'EXPIRY_REMINDER', {
+              memberId: sub.memberId,
+              subscriptionId: sub.id,
+            });
+
+            // Send push notification
+            await notificationsService.sendPushNotification(ownerId, title, body);
+          }
+        }
 
         // 2. Find subscriptions expiring in the next 7 days
         const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
