@@ -3,6 +3,7 @@ import { config } from './config';
 import prisma from './config/database';
 import { initFirebase } from './config/firebase';
 import { startMembershipExpiryJob } from './jobs/membershipExpiry';
+import { startTokenCleanupJob } from './jobs/tokenCleanup';
 
 const startServer = async () => {
   try {
@@ -18,6 +19,7 @@ const startServer = async () => {
 
     // Start cron jobs
     startMembershipExpiryJob();
+    startTokenCleanupJob();
 
     // Graceful shutdown
     const shutdown = async (signal: string) => {

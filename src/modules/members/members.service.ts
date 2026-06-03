@@ -22,7 +22,6 @@ const extractPublicId = (url: string) => {
 
 const memberInclude = {
   subscriptions: {
-    where: { status: 'ACTIVE' as const },
     include: { plan: { select: { id: true, name: true, price: true, durationDays: true } } },
     take: 1,
     orderBy: { createdAt: 'desc' as const },
@@ -42,10 +41,42 @@ export class MembersService {
   async getMembers(gymId: string, ownerId: string, query: PaginationQuery, status?: string) {
     await this.verifyGymOwner(gymId, ownerId);
 
+    const now = new Date();
+    const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
     const where: Record<string, unknown> = {
       gymId,
       ...(status === 'active' && { isActive: true }),
       ...(status === 'inactive' && { isActive: false }),
+      ...(status === 'ACTIVE' && {
+        subscriptions: {
+          some: { status: 'ACTIVE', endDate: { gte: now } }
+        }
+      }),
+      ...(status === 'EXPIRED' && {
+        OR: [
+          {
+            subscriptions: {
+              some: { status: 'EXPIRED' }
+            }
+          },
+          {
+            subscriptions: {
+              some: { status: 'ACTIVE', endDate: { lt: now } }
+            }
+          }
+        ],
+        NOT: {
+          subscriptions: {
+            some: { status: 'ACTIVE', endDate: { gte: now } }
+          }
+        }
+      }),
+      ...(status === 'EXPIRING' && {
+        subscriptions: {
+          some: { status: 'ACTIVE', endDate: { gte: now, lte: sevenDaysLater } }
+        }
+      }),
       ...(query.search && {
         OR: [
           { name: { contains: query.search, mode: 'insensitive' } },

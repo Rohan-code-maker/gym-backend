@@ -6,7 +6,7 @@ const notificationsService = new NotificationsService();
 const BATCH_SIZE = 100;
 
 /**
- * Daily cron job (runs at 9:00 AM) that:
+ * Daily cron job (runs at 5:00 AM) that:
  * 1. Auto-expires subscriptions past their end date
  * 2. Sends expiry reminders for subscriptions expiring within 7 days
  */

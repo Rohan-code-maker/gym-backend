@@ -34,7 +34,7 @@ export class AuthService {
         role: 'GYM_OWNER',
         gyms: {
           create: {
-            name: `${data.name}'s Gym`,
+            name: data.name,
             phone: data.phone,
             validUntil: new Date(Date.now() + 24 * 60 * 60 * 1000), // 1 day trial
             planType: 'TRIAL',
