@@ -34,10 +34,15 @@ export class NotificationsService {
 
     try {
       await messaging.send({ token: user.fcmToken, notification: { title, body }, data: data || {} });
-    } catch (err) {
+    } catch (err: any) {
       console.error('FCM send error:', err);
-      // Remove stale token
-      await prisma.user.update({ where: { id: userId }, data: { fcmToken: null } });
+      // Only remove the token if Firebase explicitly says it is invalid or unregistered
+      if (
+        err?.code === 'messaging/invalid-registration-token' ||
+        err?.code === 'messaging/registration-token-not-registered'
+      ) {
+        await prisma.user.update({ where: { id: userId }, data: { fcmToken: null } });
+      }
     }
   }
 

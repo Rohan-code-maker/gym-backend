@@ -50,17 +50,33 @@ export class SubscriptionsService {
 
   async getExpiredSubscriptions(gymId: string, ownerId: string, query: PaginationQuery) {
     await this.verifyGymOwner(gymId, ownerId);
-    const [subscriptions, total] = await Promise.all([
+
+    const where: any = {
+      status: 'EXPIRED',
+      member: {
+        gymId,
+        subscriptions: {
+          none: { status: 'ACTIVE' }
+        }
+      }
+    };
+
+    const [subscriptions, grouped] = await Promise.all([
       prisma.subscription.findMany({
-        where: { member: { gymId }, status: 'EXPIRED' },
+        where,
+        distinct: ['memberId'],
         skip: query.skip,
         take: query.limit,
         include: subscriptionInclude,
         orderBy: { endDate: 'desc' },
       }),
-      prisma.subscription.count({ where: { member: { gymId }, status: 'EXPIRED' } }),
+      prisma.subscription.groupBy({
+        by: ['memberId'],
+        where,
+      }),
     ]);
-    return { subscriptions, total };
+    
+    return { subscriptions, total: grouped.length };
   }
 
   async createSubscription(gymId: string, data: CreateSubscriptionInput, ownerId: string) {
