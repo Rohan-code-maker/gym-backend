@@ -53,6 +53,18 @@ export class MembersService {
           some: { status: 'ACTIVE', endDate: { gte: now } }
         }
       }),
+      ...(status === 'INACTIVE' && {
+        NOT: {
+          subscriptions: {
+            some: {
+              OR: [
+                { status: 'ACTIVE' },
+                { status: 'EXPIRED' }
+              ]
+            }
+          }
+        }
+      }),
       ...(status === 'EXPIRED' && {
         OR: [
           {

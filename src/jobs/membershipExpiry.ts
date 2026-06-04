@@ -12,7 +12,7 @@ const BATCH_SIZE = 100;
  */
 export const startMembershipExpiryJob = () => {
   cron.schedule(
-    '0 5 * * *',
+    '0 10 * * *',
     async () => {
       const now = new Date();
       console.log(`[CRON] Starting Membership/Gym expiry job at ${now.toISOString()}`);
