@@ -1,5 +1,9 @@
 import nodemailer from 'nodemailer';
+import dns from 'dns';
 import { config } from '../../config';
+
+// Force DNS to use IPv4 instead of IPv6 to fix Render ENETUNREACH issues
+dns.setDefaultResultOrder('ipv4first');
 
 const transporter = nodemailer.createTransport({
   host: config.smtp.host,
