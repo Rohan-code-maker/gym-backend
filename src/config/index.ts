@@ -17,10 +17,6 @@ const envSchema = z.object({
   FIREBASE_PRIVATE_KEY: z.string().optional(),
   MASTER_PASSWORD: z.string().min(1, 'MASTER_PASSWORD is required'),
   FRONTEND_URL: z.string().url('FRONTEND_URL must be a valid URL'),
-  SMTP_HOST: z.string().min(1, 'SMTP_HOST is required'),
-  SMTP_PORT: z.coerce.number().default(587),
-  SMTP_USER: z.string().optional(),
-  SMTP_PASS: z.string().optional(),
   RESEND_API_KEY: z.string().min(1, 'RESEND_API_KEY is required'),
 });
 
@@ -52,11 +48,5 @@ export const config = {
   },
   masterPassword: env.MASTER_PASSWORD,
   frontendUrl: env.FRONTEND_URL,
-  smtp: {
-    host: env.SMTP_HOST,
-    port: env.SMTP_PORT,
-    user: env.SMTP_USER,
-    pass: env.SMTP_PASS,
-  },
   resendApiKey: env.RESEND_API_KEY,
 } as const;
