@@ -21,6 +21,9 @@ import systemPlansRoutes from './modules/system-plans/system-plans.routes';
 
 const app = express();
 
+// Trust proxy for rate limiting behind Render's load balancers
+app.set('trust proxy', 1);
+
 // ─── Security ─────────────────────────────────────────────────────────────────
 app.use(helmet());
 app.use(cors({
