@@ -1,34 +1,21 @@
-import nodemailer from 'nodemailer';
-import dns from 'dns';
+import { Resend } from 'resend';
 import { config } from '../../config';
 
-// Force DNS to use IPv4 instead of IPv6 to fix Render ENETUNREACH issues
-dns.setDefaultResultOrder('ipv4first');
-
-const transporter = nodemailer.createTransport({
-  host: config.smtp.host,
-  port: config.smtp.port,
-  secure: config.smtp.port === 465, // true for 465, false for other ports
-  family: 4, // Force IPv4 explicitly to avoid Render ENETUNREACH issues
-  auth: {
-    user: config.smtp.user,
-    pass: config.smtp.pass,
-  },
-} as any);
+const resend = new Resend(config.resendApiKey);
 
 /**
- * Send an email
+ * Send an email using Resend
  */
 export const sendEmail = async (to: string, subject: string, html: string) => {
   try {
-    const info = await transporter.sendMail({
-      from: `"Gym Manager" <${config.smtp.user}>`,
-      to,
+    const data = await resend.emails.send({
+      from: 'Gym Manager <onboarding@resend.dev>', // You should verify your own domain and use it here for production
+      to: [to],
       subject,
       html,
     });
-    console.log(`Email sent: ${info.messageId}`);
-    return info;
+    console.log(`Email sent: ${data.data?.id}`);
+    return data;
   } catch (error) {
     console.error('Error sending email:', error);
     throw new Error('Failed to send email');

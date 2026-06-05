@@ -19,8 +19,9 @@ const envSchema = z.object({
   FRONTEND_URL: z.string().url('FRONTEND_URL must be a valid URL'),
   SMTP_HOST: z.string().min(1, 'SMTP_HOST is required'),
   SMTP_PORT: z.coerce.number().default(587),
-  SMTP_USER: z.string().min(1, 'SMTP_USER is required'),
-  SMTP_PASS: z.string().min(1, 'SMTP_PASS is required'),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  RESEND_API_KEY: z.string().min(1, 'RESEND_API_KEY is required'),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -56,5 +57,6 @@ export const config = {
     port: env.SMTP_PORT,
     user: env.SMTP_USER,
     pass: env.SMTP_PASS,
-  }
+  },
+  resendApiKey: env.RESEND_API_KEY,
 } as const;
