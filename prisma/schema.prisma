@@ -61,9 +61,11 @@ model User {
   phone         String?
   avatar        String?
   role          Role           @default(GYM_OWNER)
-  fcmToken      String?
-  isActive      Boolean        @default(true)
-  refreshTokens RefreshToken[]
+  fcmToken             String?
+  isActive             Boolean        @default(true)
+  resetPasswordToken   String?
+  resetPasswordExpires DateTime?
+  refreshTokens        RefreshToken[]
   gyms          Gym[]
   notifications Notification[]
   createdAt     DateTime       @default(now())

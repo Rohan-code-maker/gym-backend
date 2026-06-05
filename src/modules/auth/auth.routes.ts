@@ -4,7 +4,7 @@ import { authenticate } from '../../middleware/authenticate';
 import { authorize } from '../../middleware/authorize';
 import { validate } from '../../middleware/validate';
 import { authLimiter } from '../../middleware/rateLimiter';
-import { registerSchema, loginSchema, refreshSchema, logoutSchema } from './auth.validation';
+import { registerSchema, loginSchema, refreshSchema, logoutSchema, changePasswordSchema, forgotPasswordSchema, resetPasswordSchema } from './auth.validation';
 
 const router = Router();
 
@@ -16,5 +16,9 @@ router.get('/me', authenticate, authController.getMe);
 router.patch('/me', authenticate, authController.updateProfile);
 router.post('/fcm-token', authenticate, authController.updateFcmToken);
 router.delete('/users/:id', authenticate, authorize('SUPER_ADMIN'), authController.deleteUser);
+
+router.patch('/change-password', authenticate, validate(changePasswordSchema), authController.changePassword);
+router.post('/forgot-password', authLimiter, validate(forgotPasswordSchema), authController.forgotPassword);
+router.post('/reset-password', authLimiter, validate(resetPasswordSchema), authController.resetPassword);
 
 export default router;

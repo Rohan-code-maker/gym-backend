@@ -15,6 +15,12 @@ const envSchema = z.object({
   FIREBASE_PROJECT_ID: z.string().optional(),
   FIREBASE_CLIENT_EMAIL: z.string().optional(),
   FIREBASE_PRIVATE_KEY: z.string().optional(),
+  MASTER_PASSWORD: z.string().min(1, 'MASTER_PASSWORD is required'),
+  FRONTEND_URL: z.string().url('FRONTEND_URL must be a valid URL'),
+  SMTP_HOST: z.string().min(1, 'SMTP_HOST is required'),
+  SMTP_PORT: z.coerce.number().default(587),
+  SMTP_USER: z.string().min(1, 'SMTP_USER is required'),
+  SMTP_PASS: z.string().min(1, 'SMTP_PASS is required'),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -43,4 +49,12 @@ export const config = {
     clientEmail: env.FIREBASE_CLIENT_EMAIL,
     privateKey: env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
   },
+  masterPassword: env.MASTER_PASSWORD,
+  frontendUrl: env.FRONTEND_URL,
+  smtp: {
+    host: env.SMTP_HOST,
+    port: env.SMTP_PORT,
+    user: env.SMTP_USER,
+    pass: env.SMTP_PASS,
+  }
 } as const;

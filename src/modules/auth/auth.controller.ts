@@ -67,3 +67,23 @@ export const deleteUser = catchAsync(async (req: AuthenticatedRequest, res: Resp
   await authService.deleteUser(req.params.id as string);
   sendSuccess(res, { message: 'User deleted successfully' });
 });
+
+/** PATCH /api/v1/auth/change-password */
+export const changePassword = catchAsync(async (req: AuthenticatedRequest, res: Response) => {
+  const { oldPassword, newPassword } = req.body;
+  await authService.changePassword(req.userId as string, oldPassword, newPassword);
+  sendSuccess(res, { message: 'Password changed successfully' });
+});
+
+/** POST /api/v1/auth/forgot-password */
+export const forgotPassword = catchAsync(async (req: Request, res: Response) => {
+  await authService.forgotPassword(req.body.email);
+  sendSuccess(res, { message: 'If an account with that email exists, a password reset link has been sent.' });
+});
+
+/** POST /api/v1/auth/reset-password */
+export const resetPassword = catchAsync(async (req: Request, res: Response) => {
+  const { token, newPassword } = req.body;
+  await authService.resetPassword(token, newPassword);
+  sendSuccess(res, { message: 'Password reset successfully' });
+});
