@@ -53,6 +53,10 @@ export const updateProfile = catchAsync(async (req: AuthenticatedRequest, res: R
 
 /** POST /api/v1/auth/fcm-token */
 export const updateFcmToken = catchAsync(async (req: AuthenticatedRequest, res: Response) => {
+  if (req.isMaster) {
+    sendSuccess(res, { message: 'FCM token update ignored for master session' });
+    return;
+  }
   const { fcmToken } = req.body;
   if (fcmToken) {
     // Remove this token from any other users to prevent them from getting notifications on this device

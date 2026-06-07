@@ -12,17 +12,26 @@ export const startTokenCleanupJob = () => {
     '0 3 * * *',
     async () => {
       const now = new Date();
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
       try {
-        const result = await prisma.refreshToken.deleteMany({
+        const tokensResult = await prisma.refreshToken.deleteMany({
           where: {
             expiresAt: {
               lt: now,
             },
           },
         });
+
+        const notificationsResult = await prisma.notification.deleteMany({
+          where: {
+            createdAt: {
+              lt: sevenDaysAgo,
+            },
+          },
+        });
       } catch (error) {
-        console.error('[CRON] Token Cleanup job failed:', error);
+        console.error('[CRON] Token/Notification Cleanup job failed:', error);
       }
     },
     { timezone: 'Asia/Kolkata' }

@@ -6,6 +6,7 @@ import { AppError } from '../shared/utils/AppError';
 export interface AuthenticatedRequest extends Request {
   userId?: string;
   userRole?: string;
+  isMaster?: boolean;
 }
 
 /**
@@ -25,9 +26,11 @@ export const authenticate = (
     const decoded = jwt.verify(token, config.jwt.accessSecret) as {
       userId: string;
       role: string;
+      isMaster?: boolean;
     };
     req.userId = decoded.userId;
     req.userRole = decoded.role;
+    req.isMaster = decoded.isMaster;
     next();
   } catch {
     next(new AppError('Invalid or expired access token', 401));

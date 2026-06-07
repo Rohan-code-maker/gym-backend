@@ -93,10 +93,17 @@ export class SubscriptionsService {
     const endDate = new Date(startDate.getTime() + plan.durationDays * 24 * 60 * 60 * 1000);
 
     return prisma.$transaction(async (tx) => {
-      // Cancel any existing active subscription
-      await tx.subscription.updateMany({
-        where: { memberId: data.memberId, status: 'ACTIVE' },
-        data: { status: 'CANCELLED' },
+      // Delete all existing payments tied to any subscription for this member
+      await tx.payment.deleteMany({
+        where: {
+          memberId: data.memberId,
+          subscriptionId: { not: null },
+        },
+      });
+
+      // Delete all existing subscriptions for this member
+      await tx.subscription.deleteMany({
+        where: { memberId: data.memberId },
       });
 
       const subscription = await tx.subscription.create({

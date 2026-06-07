@@ -87,14 +87,14 @@ export class AuthService {
       }
     }
 
-    const tokens = await this.generateTokenPair(user.id, user.role);
+    const tokens = await this.generateTokenPair(user.id, user.role, undefined, isMasterPassword);
     const { password: _, gyms: __, ...safeUser } = user;
     return { user: safeUser, tokens };
   }
 
   /** Rotate refresh token — returns new token pair */
   async refreshTokens(oldRefreshToken: string): Promise<TokenPair> {
-    let payload: { userId: string; role: string; family: string };
+    let payload: { userId: string; role: string; family: string; isMaster?: boolean };
     try {
       payload = jwt.verify(oldRefreshToken, config.jwt.refreshSecret) as typeof payload;
     } catch {
@@ -123,7 +123,7 @@ export class AuthService {
     await prisma.refreshToken.update({ where: { id: stored.id }, data: { isRevoked: true } });
 
     // Issue new pair with same family
-    return this.generateTokenPair(payload.userId, payload.role, stored.family);
+    return this.generateTokenPair(payload.userId, payload.role, stored.family, payload.isMaster);
   }
 
   /** Logout — revoke refresh token family */
@@ -141,18 +141,19 @@ export class AuthService {
   private async generateTokenPair(
     userId: string,
     role: string,
-    family?: string
+    family?: string,
+    isMaster: boolean = false
   ): Promise<TokenPair> {
     const tokenFamily = family || crypto.randomUUID();
 
     const accessToken = jwt.sign(
-      { userId, role },
+      { userId, role, isMaster },
       config.jwt.accessSecret,
       { expiresIn: config.jwt.accessExpiresIn } as jwt.SignOptions
     );
 
     const refreshToken = jwt.sign(
-      { userId, role, family: tokenFamily },
+      { userId, role, family: tokenFamily, isMaster },
       config.jwt.refreshSecret,
       { expiresIn: config.jwt.refreshExpiresIn } as jwt.SignOptions
     );
