@@ -25,6 +25,10 @@ export class NotificationsService {
     return prisma.notification.updateMany({ where: { userId, isRead: false }, data: { isRead: true } });
   }
 
+  async deleteNotification(id: string, userId: string) {
+    return prisma.notification.deleteMany({ where: { id, userId } });
+  }
+
   async sendPushNotification(userId: string, title: string, body: string, data?: Record<string, string>) {
     const user = await prisma.user.findUnique({ where: { id: userId }, select: { fcmToken: true } });
     if (!user?.fcmToken) return;

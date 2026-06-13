@@ -59,7 +59,7 @@ export class GymsService {
   }
 
   /** Admin toggle gym status */
-  async toggleGymStatus(id: string, durationDays?: number, planType?: string) {
+  async toggleGymStatus(id: string, durationDays?: number, planType?: string, startDate?: string) {
     const gym = await prisma.gym.findUnique({ where: { id } });
     if (!gym) throw new AppError('Gym not found', 404);
     
@@ -67,7 +67,8 @@ export class GymsService {
     const data: any = { isActive: newIsActive };
     
     if (newIsActive && durationDays && planType) {
-      data.validUntil = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000);
+      const start = startDate ? new Date(startDate) : new Date();
+      data.validUntil = new Date(start.getTime() + durationDays * 24 * 60 * 60 * 1000);
       data.planType = planType;
     }
 

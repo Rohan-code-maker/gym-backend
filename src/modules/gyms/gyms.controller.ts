@@ -37,7 +37,7 @@ export const getDashboard = catchAsync(async (req: AuthenticatedRequest, res: Re
 });
 
 export const toggleStatus = catchAsync(async (req: AuthenticatedRequest, res: Response) => {
-  const { durationDays, planType } = req.body;
-  const gym = await gymsService.toggleGymStatus(req.params.id as string, durationDays, planType);
+  const { durationDays, planType, startDate } = req.body;
+  const gym = await gymsService.toggleGymStatus(req.params.id as string, durationDays, planType, startDate);
   sendSuccess(res, { message: 'Gym status updated successfully', data: gym });
 });

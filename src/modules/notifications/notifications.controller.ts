@@ -22,3 +22,8 @@ export const markAllAsRead = catchAsync(async (req: AuthenticatedRequest, res: R
   await notificationsService.markAllAsRead(req.userId!);
   sendSuccess(res, { message: 'All notifications marked as read' });
 });
+
+export const deleteNotification = catchAsync(async (req: AuthenticatedRequest, res: Response) => {
+  await notificationsService.deleteNotification(req.params.id as string, req.userId!);
+  sendSuccess(res, { message: 'Notification deleted successfully' });
+});
