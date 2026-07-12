@@ -93,18 +93,30 @@ export class SubscriptionsService {
     const endDate = new Date(startDate.getTime() + plan.durationDays * 24 * 60 * 60 * 1000);
 
     return prisma.$transaction(async (tx) => {
-      // Delete all existing payments tied to any subscription for this member
-      await tx.payment.deleteMany({
-        where: {
-          memberId: data.memberId,
-          subscriptionId: { not: null },
-        },
+      // Fetch existing subscriptions ordered by createdAt descending (newest first)
+      const existingSubscriptions = await tx.subscription.findMany({
+        where: { memberId: data.memberId },
+        orderBy: { createdAt: 'desc' },
+        select: { id: true },
       });
 
-      // Delete all existing subscriptions for this member
-      await tx.subscription.deleteMany({
-        where: { memberId: data.memberId },
-      });
+      // Keep only the 2 newest existing subscriptions so the total will be at most 3
+      // after adding the new one.
+      if (existingSubscriptions.length >= 3) {
+        const subscriptionsToDelete = existingSubscriptions.slice(2).map((sub) => sub.id);
+
+        // Delete payments tied to the subscriptions we are deleting
+        await tx.payment.deleteMany({
+          where: {
+            subscriptionId: { in: subscriptionsToDelete },
+          },
+        });
+
+        // Delete the oldest subscriptions
+        await tx.subscription.deleteMany({
+          where: { id: { in: subscriptionsToDelete } },
+        });
+      }
 
       const subscription = await tx.subscription.create({
         data: { memberId: data.memberId, planId: data.planId, startDate, endDate, status: 'ACTIVE' },
