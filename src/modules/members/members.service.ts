@@ -132,7 +132,7 @@ export class MembersService {
 
   async createMember(gymId: string, data: CreateMemberInput, ownerId: string) {
     await this.verifyGymOwner(gymId, ownerId);
-    
+
     // Check for duplicate phone number in this gym
     const existing = await prisma.member.findFirst({ where: { gymId, phone: data.phone } });
     if (existing) {

@@ -11,15 +11,29 @@ const subscriptionInclude = {
 export class SubscriptionsService {
   private async verifyGymOwner(gymId: string, ownerId: string) {
     const gym = await prisma.gym.findFirst({ where: { id: gymId, ownerId } });
-    if (!gym) throw new AppError('Gym not found', 404);
+    if (!gym) throw new AppError('Gym not found or unauthorized', 404);
     if (!gym.isActive) throw new AppError('GYM_DEACTIVATED', 403);
     return gym;
+  }
+
+  private async getLatestSubscriptionIds(gymId: string): Promise<string[]> {
+    const latestSubs = await prisma.$queryRaw<{ id: string }[]>`
+      SELECT DISTINCT ON (s."memberId") s.id
+      FROM subscriptions s
+      JOIN members m ON s."memberId" = m.id
+      WHERE m."gymId" = ${gymId}
+      ORDER BY s."memberId", s."createdAt" DESC
+    `;
+    return latestSubs.map(sub => sub.id);
   }
 
   async getSubscriptions(gymId: string, ownerId: string, query: PaginationQuery, status?: string) {
     await this.verifyGymOwner(gymId, ownerId);
 
+    const latestSubIds = await this.getLatestSubscriptionIds(gymId);
+
     const where: Record<string, unknown> = {
+      id: { in: latestSubIds },
       member: { gymId },
       ...(status && { status }),
     };
@@ -39,10 +53,11 @@ export class SubscriptionsService {
 
   async getExpiringSubscriptions(gymId: string, ownerId: string) {
     await this.verifyGymOwner(gymId, ownerId);
+    const latestSubIds = await this.getLatestSubscriptionIds(gymId);
     const now = new Date();
     const sevenDays = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
     return prisma.subscription.findMany({
-      where: { member: { gymId }, status: 'ACTIVE', endDate: { gte: now, lte: sevenDays } },
+      where: { id: { in: latestSubIds }, member: { gymId }, status: 'ACTIVE', endDate: { gte: now, lte: sevenDays } },
       include: subscriptionInclude,
       orderBy: { endDate: 'asc' },
     });
@@ -50,33 +65,27 @@ export class SubscriptionsService {
 
   async getExpiredSubscriptions(gymId: string, ownerId: string, query: PaginationQuery) {
     await this.verifyGymOwner(gymId, ownerId);
+    
+    const latestSubIds = await this.getLatestSubscriptionIds(gymId);
 
     const where: any = {
+      id: { in: latestSubIds },
       status: 'EXPIRED',
-      member: {
-        gymId,
-        subscriptions: {
-          none: { status: 'ACTIVE' }
-        }
-      }
+      member: { gymId }
     };
 
-    const [subscriptions, grouped] = await Promise.all([
+    const [subscriptions, total] = await Promise.all([
       prisma.subscription.findMany({
         where,
-        distinct: ['memberId'],
         skip: query.skip,
         take: query.limit,
         include: subscriptionInclude,
         orderBy: { endDate: 'desc' },
       }),
-      prisma.subscription.groupBy({
-        by: ['memberId'],
-        where,
-      }),
+      prisma.subscription.count({ where }),
     ]);
 
-    return { subscriptions, total: grouped.length };
+    return { subscriptions, total };
   }
 
   async createSubscription(gymId: string, data: CreateSubscriptionInput, ownerId: string) {
@@ -93,18 +102,29 @@ export class SubscriptionsService {
     const endDate = new Date(startDate.getTime() + plan.durationDays * 24 * 60 * 60 * 1000);
 
     return prisma.$transaction(async (tx) => {
-      // Delete all existing payments tied to any subscription for this member
-      await tx.payment.deleteMany({
-        where: {
-          memberId: data.memberId,
-          subscriptionId: { not: null },
-        },
+      // Keep a maximum of 4 subscriptions per member (including the new one)
+      const existingSubs = await tx.subscription.findMany({
+        where: { memberId: data.memberId },
+        orderBy: { createdAt: 'desc' },
+        select: { id: true },
       });
 
-      // Delete all existing subscriptions for this member
-      await tx.subscription.deleteMany({
-        where: { memberId: data.memberId },
-      });
+      if (existingSubs.length >= 4) {
+        // Keep the 3 most recent ones, delete the rest
+        const subsToDelete = existingSubs.slice(3).map(s => s.id);
+
+        // Delete all payments tied to the subscriptions we are deleting
+        await tx.payment.deleteMany({
+          where: {
+            subscriptionId: { in: subsToDelete },
+          },
+        });
+
+        // Delete the old subscriptions
+        await tx.subscription.deleteMany({
+          where: { id: { in: subsToDelete } },
+        });
+      }
 
       const subscription = await tx.subscription.create({
         data: { memberId: data.memberId, planId: data.planId, startDate, endDate, status: 'ACTIVE' },
